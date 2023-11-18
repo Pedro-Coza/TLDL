@@ -4,7 +4,6 @@ import pyshorteners
 from util import getChatCompletion, getBasePrompt, getDalle3Img
 from dotenv import load_dotenv
 from openai import OpenAI
-from typing import Final
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -15,6 +14,13 @@ load_dotenv(dotenv_path)
 TOKEN = os.getenv('TOKEN')
 BOT_USERNAME = os.getenv('BOT_USERNAME')
 OPENAI_SECRET = os.getenv('OPENAI_SECRET')
+
+DALLE_3_MODEL = 'dalle-e-3'
+GPT3_MODEL = 'gpt-3.5-turbo'
+GPT4_MODEL = 'gpt-4'
+GPT4_TURBO_MODEL = 'gpt-4-1106-preview'
+AST_BASE = 'You are a helpful assistant that keeps short and explicative answer when queried.'
+AST_TEXT_SUMM = 'You are a helpful assistant, specialized on content improvement. Your job is to receive text transcriptions i.e. whatsapp audio messages from people, which you should summarize, using short sentences, and an emoji in front of each sentence, relevant to the meaning of the sentence.You should keep the words of the original speaker as much as possible'
 
 client = OpenAI(api_key=OPENAI_SECRET)
 
@@ -45,8 +51,7 @@ def handle_response(text: str, model: str) -> str:
             img_link = getDalle3Img(client, prompt, pyshorteners)
             return img_link
         case _:
-            assistant_content = 'You are a helpful assistant that keeps short and explicative answer when queried.'
-            response = getChatCompletion(client, prompt, model, assistant_content)
+            response = getChatCompletion(client, prompt, model, AST_BASE)
             return response
         
     #print("============" + str(response) + "==============")
@@ -74,16 +79,16 @@ async def handle_voice_response(update: Update, context: ContextTypes.DEFAULT_TY
                 file=audio_file
             )
 
-        print('handle_voice_response() - Transcript object' + str(transcript))
-
-        print(f'handle_voice_response() - The text in audio: \n {transcript.text}')
+        #print('handle_voice_response() - Transcript object: ' + str(transcript))
 
         # Elimina el archivo de audio si ya no lo necesitas
         os.remove(voice_file_path)
+        #model = GPT4_TURBO_MODEL
+        #ast = AST_TEXT_SUMM
+        #response = await getChatCompletion(client, transcript.text, model, ast)
+        response = transcript.text
 
-
-
-        await update.message.reply_text(transcript.text)
+        await update.message.reply_text(response)
     except Exception as e:
         print(f'Error handling audio: {e}')
         await update.message.reply_text('An error occurred while processing the audio 😰')
@@ -131,16 +136,16 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     else:
         if '/gpt3' in text:
-            model='gpt-3.5-turbo'
+            model=GPT3_MODEL
             response: str = handle_response(text, model)
         elif '/gpt4' in text:
-            model='gpt-4'
+            model=GPT4_MODEL
             response: str = handle_response(text, model)
         elif '/turbo' in text:
-            model='gpt-4-1106-preview'
+            model=GPT4_TURBO_MODEL
             response: str = handle_response(text, model)
         elif '/dalle' in text:
-            model='dall-e-3'
+            model=DALLE_3_MODEL
             response: str = handle_response(text, model)
         else:
             model='none'

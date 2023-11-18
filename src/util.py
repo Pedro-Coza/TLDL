@@ -1,4 +1,5 @@
-def getChatCompletion(client, prompt, model, assistant_content):
+async def getChatCompletion(client, prompt, model, assistant_content):
+    print(f'getChatCompletion() - Generating completion with {model} model and context {assistant_content}')
     chat_completion = client.chat.completions.create(
         messages=[
             {
