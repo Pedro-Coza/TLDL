@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pyshorteners
+from util import getChatCompletion, getBasePrompt, getDalle3Img
 from dotenv import load_dotenv
 from openai import OpenAI
 from typing import Final
@@ -35,46 +36,27 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Responses
 def handle_response(text: str, model: str) -> str:
-    processed: str = text.lower()
+    prompt: getBasePrompt(text)
 
     print('Querying ' + model + '...')
+
     match model:
         case 'dall-e-3':
-            response = client.images.generate(
-                model="dall-e-3",
-                prompt=processed,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            image_url = response.data[0].url
-            shorteners = pyshorteners.Shortener()
-            shortlink = shorteners.tinyurl.short(image_url)
-            return shortlink
+            img_link = getDalle3Img(client, prompt, pyshorteners)
+            return img_link
         case _:
-            chat_completion = client.chat.completions.create(
-                messages=[
-                    {
-                        "role": "assistant",
-                        "content": "You are a helpful assistant that keeps short and explicative answer when queried.",
-                    },
-                    {
-                        "role": "user",
-                        "content": processed,
-                    }
-                ],
-                model=model,
-                max_tokens=500,
-            )
-
-            response = chat_completion.choices[0].message.content
+            assistant_content = 'You are a helpful assistant that keeps short and explicative answer when queried.'
+            response = getChatCompletion(client, prompt, model, assistant_content)
             return response
+        
     #print("============" + str(response) + "==============")
 
 async def handle_voice_response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         print('handle_voice_response() - Starting')
         
+        processing_message = await update.message.reply_text('Procesando el audio...')
+
         # Obtén el objeto de audio
         voice_file = update.message.voice
 
@@ -85,11 +67,6 @@ async def handle_voice_response(update: Update, context: ContextTypes.DEFAULT_TY
         voice_file_path = await voice_file.download_to_drive('voice.mp3')
         print('handle_voice_response() - Voice file path: ' + str(voice_file_path))
 
-        # Load the audio file into a numpy array
-        #audio_data, sample_rate = librosa.load(voice_file_path, sr=None)
-
-        #model = whisper.load_model("base")
-        #result = model.transcribe(audio_data)
         print('handle_voice_response() - Querying whisper...')
         with open(voice_file_path, "rb") as audio_file:
             transcript = client.audio.transcriptions.create(
@@ -103,6 +80,9 @@ async def handle_voice_response(update: Update, context: ContextTypes.DEFAULT_TY
 
         # Elimina el archivo de audio si ya no lo necesitas
         os.remove(voice_file_path)
+
+
+
         await update.message.reply_text(transcript.text)
     except Exception as e:
         print(f'Error handling audio: {e}')
