@@ -1,4 +1,4 @@
-# TLDL (Too Long; Didnt Listen)
+# TLDL (Too Long; Didn't Listen)
 
 Originally, **TLDL** is a simple Telegram bot for audio files transcribing. It makes OpenAI Whisper API calls sending the transcribed audio back. 
 
